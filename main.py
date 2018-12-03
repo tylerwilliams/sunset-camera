@@ -30,21 +30,24 @@ def schedule_event(utc_time_secs, priority, fn, argtuple):
 def post_tweet(image_path, event):
     twitter_api.update_with_media(image_path, status='Another beautiful %s' % event)
 
-def capture_image(event):
+def capture_image(event, test_mode):
     logging.info('taking a picture of: %s', event)
     with picamera.PiCamera() as camera:
-        camera.resolution = (1280, 720)
+        camera.resolution = (2592, 1944)
         camera.start_preview()
-        # camera.exposure_compensation = 2
-        #camera.exposure_mode = 'spotlight'
-        camera.meter_mode = 'matrix'
+        camera.exposure_compensation = 6
+        camera.exposure_mode = 'auto'
+        camera.meter_mode = 'backlit'
         #camera.image_effect = 'gpen'
         # Give the camera some time to adjust to conditions
         time.sleep(1)
-        with tempfile.NamedTemporaryFile(suffix='.png') as fp:
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=(not test_mode)) as fp:
             camera.capture(fp.name, format='png')
             camera.stop_preview()
-            post_tweet(fp.name, event)
+            if test_mode:
+                print "would post: ", fp.name, event
+            else:
+                post_tweet(fp.name, event)
 
 def schedule_events(test_mode=False):
     location = astral.Location(info=locinfo)
@@ -61,7 +64,7 @@ def schedule_events(test_mode=False):
                 continue
             if test_mode:
                 utc_time_secs = time.time() + 3 + i
-            schedule_event(utc_time_secs, 1, capture_image, (event,))
+            schedule_event(utc_time_secs, 1, capture_image, (event, test_mode))
         schedule_date += datetime.timedelta(days=1)
 
     # Schedule a re-run of this function 1 second after the last event.
